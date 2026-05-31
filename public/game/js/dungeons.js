@@ -73,6 +73,9 @@ class DungeonsSystem {
         this.activeParty = [];
         this.monsters = [];
         this.currentWave = 1;
+        this.totalWaves = 3;
+        this.gateType = 'standard'; // 'standard', 'red_gate', 'double_dungeon'
+        this.sectors = [];
         this.battleLog = [];
     }
 
@@ -182,7 +185,78 @@ class DungeonsSystem {
         this.battleActive = true;
         this.activeParty = this.prepareBattleParty();
         this.currentWave = 1;
+
+        // Deciding Gate Type / Layout based on Rank
+        this.gateType = 'standard';
+        const rollType = Math.random() * 100;
+        if (gate.rank !== 'E') {
+            if (gate.rank === 'D') {
+                if (rollType > 82) this.gateType = 'red_gate'; // 18% for Red Gate
+            } else {
+                // Ranks C, B, A, S
+                if (rollType > 88) {
+                    this.gateType = 'double_dungeon'; // 12% Double Dungeon
+                } else if (rollType > 70) {
+                    this.gateType = 'red_gate'; // 18% Red Gate
+                }
+            }
+        }
+
+        // Sector count determination based on Rank and layout type
+        let baseSectorsCount = 2;
+        if (gate.rank === 'E') baseSectorsCount = 2; // 1 standard sector + 1 Boss room
+        else if (gate.rank === 'D') baseSectorsCount = 2 + Math.floor(Math.random() * 2); // 2-3 sectors total
+        else if (gate.rank === 'C') baseSectorsCount = 2 + Math.floor(Math.random() * 2); // 2-3 sectors total
+        else if (gate.rank === 'B') baseSectorsCount = 3 + Math.floor(Math.random() * 2); // 3-4 sectors total
+        else if (gate.rank === 'A') baseSectorsCount = 3 + Math.floor(Math.random() * 3); // 3-5 sectors total
+        else if (gate.rank === 'S') baseSectorsCount = 4 + Math.floor(Math.random() * 3); // 4-6 sectors total
+
+        this.totalWaves = baseSectorsCount;
+
+        // Names list for sectors based on gate bosses and monsters
+        const sectorNames = [];
+        const isZombie = gate.mobTemplate.name.includes("Zombie");
+        const isGoblin = gate.mobTemplate.name.includes("Goblin");
+        const isSkeleton = gate.mobTemplate.name.includes("Szkielet");
+        const isGolem = gate.mobTemplate.name.includes("Golem");
+        const isDragon = gate.mobTemplate.name.includes("Jaszczuroczłek") || gate.mobTemplate.name.includes("Smoczy");
+        const isVoid = gate.mobTemplate.name.includes("Pustki");
+
+        let themes = ["Mroczna Jaskinia", "Zrujnowany Korytarz", "Zasypany Sektor"];
+        if (isZombie) themes = ["Gnijące Składowisko", "Zalane Kanały Jaskini", "Wilgotna Krypta", "Korytarz Ciał"];
+        else if (isGoblin) themes = ["Kopalnia Kryształów", "Spiżarnia Zielonoskórych", "Skalny Taras", "Ufortyfikowany Posterunek"];
+        else if (isSkeleton) themes = ["Katakumby Cierpienia", "Sanktuarium Kości", "Grobowiec Dawnych Rycerzy", "Korytarz Szeptów Podziemi"];
+        else if (isGolem) themes = ["Runiczna Pracownia", "Mechaniczny Przedsionek", "Zasypany Sektor Kryształów", "Zapomniana Kuźnia"];
+        else if (isDragon) themes = ["Wulkaniczna Rozpadlina", "Płonące Tarasy Bramy", "Smocze Gniazdo Skał", "Korytarz Magmowy"];
+        else if (isVoid) themes = ["Pustka Monarchów", "Zakrzywienie Czasoprzestrzeni", "Granica Sfery Cieni", "Sektor Śmiertelnej Ciszy"];
+
+        if (this.gateType === 'red_gate') {
+            themes = ["Zamarznięty Las Polarny", "Śnieżna Rozpadlina", "Wichura Mroźnego Wichru", "Lodowy Labirynt Bez Powrotu"];
+        } else if (this.gateType === 'double_dungeon') {
+            themes = ["Ukryte Przejście Świątyni", "Przedsionek Cartenon", "Sala Kolosalnych Posągów", "Zrujnowany Ołtarz Zasad"];
+        }
+
+        // Generate names for each pre-boss sector
+        for (let s = 1; s < this.totalWaves; s++) {
+            const avail = themes.filter(name => !sectorNames.includes(name));
+            const pick = avail.length > 0 ? avail[Math.floor(Math.random() * avail.length)] : themes[Math.floor(Math.random() * themes.length)];
+            sectorNames.push(pick);
+        }
+        // Last sector is always the Boss Room
+        if (this.gateType === 'double_dungeon') {
+            sectorNames.push("Święte Sanktuarium Boga");
+        } else {
+            sectorNames.push("Główna Komnata Bosa");
+        }
+
+        this.sectors = sectorNames;
+
+        let typeLabel = "ZWYKŁA BRAMA";
+        if (this.gateType === 'red_gate') typeLabel = "🔴 CZERWONA BRAMA (IZOLACJA - TRUDNIEJSI WROGOWIE, LEPSZE NAGRODY!)";
+        if (this.gateType === 'double_dungeon') typeLabel = "👁️ PODWÓJNY LOCH (ŚWIĄTYNIA ARCHITEKTA - BARDZO WYSOKIE DOŚWIADCZENIE!)";
+
         this.battleLog = [`[SYSTEM] Rozpoczęto rajd w Bramie: ${gate.name} (Ranga ${gate.rank})`];
+        this.battleLog.push(`[DETEKTOR SYGNAŁU] Typ Bramy: ${typeLabel}`);
         
         window.gameState.state.world.currentGate = gateId;
         window.gameState.save();
@@ -198,44 +272,103 @@ class DungeonsSystem {
         const gate = this.gates[gateId];
         this.monsters = [];
 
-        if (this.currentWave < gate.waves) {
-            const numMobs = 2 + Math.floor(Math.random() * 2);
+        const isLastWave = this.currentWave === this.totalWaves;
+        const currentSectorName = this.sectors[this.currentWave - 1] || "Sektor Jaskini";
+
+        if (!isLastWave) {
+            // Pre-boss battles
+            const isDoubleDungeon = this.gateType === 'double_dungeon';
+            const isRedGate = this.gateType === 'red_gate';
+
+            // 25% chance to spawn an Elite on this sector (pre-boss)
+            const isEliteSpawn = Math.random() < 0.25;
+
+            // Randomized count of enemies: 1 to 3 enemies pre-boss
+            const numMobs = 1 + Math.floor(Math.random() * 2);
+
             for (let i = 1; i <= numMobs; i++) {
-                const mobTemplate = gate.mobTemplate;
-                const hp = Math.floor(mobTemplate.hp * (0.9 + Math.random() * 0.2));
+                let mobName = "";
+                let hp = gate.mobTemplate.hp;
+                let patk = gate.mobTemplate.patk;
+                let def = gate.mobTemplate.def;
+
+                if (isDoubleDungeon) {
+                    mobName = `Ożywiony Posąg Wojownika ${String.fromCharCode(64 + i)}`;
+                    hp = Math.floor(hp * 1.15);
+                    patk = Math.floor(patk * 1.05);
+                } else if (isEliteSpawn && i === 1) {
+                    mobName = `[ELITARNY] ${gate.mobTemplate.name}`;
+                    hp = Math.floor(hp * 1.55);
+                    patk = Math.floor(patk * 1.25);
+                    def = Math.floor(def * 1.20);
+                } else {
+                    mobName = `${gate.mobTemplate.name} ${String.fromCharCode(64 + i)}`;
+                }
+
+                // Apply Red Gate stat mutations (+25% HP, +20% ATK, +15% DEF)
+                if (isRedGate) {
+                    hp = Math.floor(hp * 1.25);
+                    patk = Math.floor(patk * 1.20);
+                    def = Math.floor(def * 1.15);
+                    mobName = `[Skażony] ${mobName}`;
+                }
+
+                // Dynamic HP fluctuation
+                const finalHp = Math.floor(hp * (0.9 + Math.random() * 0.2));
+
                 this.monsters.push({
-                    name: `${mobTemplate.name} ${String.fromCharCode(64 + i)}`,
-                    hp: hp,
-                    maxHp: hp,
-                    patk: mobTemplate.patk,
-                    def: mobTemplate.def,
-                    cooldown: 0,
+                    name: mobName,
+                    hp: finalHp,
+                    maxHp: finalHp,
+                    patk: patk,
+                    def: def,
+                    isElite: isEliteSpawn && i === 1 && !isDoubleDungeon,
+                    isStatue: isDoubleDungeon,
                     actionGauge: Math.floor(Math.random() * 30)
                 });
             }
-            this.battleLog.push(`[SYSTEM] Fala ${this.currentWave}/${gate.waves}: Napotkano wrogie potwory!`);
+
+            this.battleLog.push(`[SEKTOR ${this.currentWave}/${this.totalWaves}] Wchodzisz do: "${currentSectorName}". Czeka tu na Ciebie ${numMobs} przeciwników!`);
         } else {
+            // Final Boss Battle
             const bossTemplate = gate.boss;
+            let bossName = bossTemplate.name;
+            let hp = bossTemplate.hp;
+            let patk = bossTemplate.patk;
+            let def = bossTemplate.def;
+
+            if (this.gateType === 'red_gate') {
+                bossName = `🚨 [ZMUTOWANY] Arcydemon ${bossTemplate.name}`;
+                hp = Math.floor(hp * 1.30);
+                patk = Math.floor(patk * 1.25);
+                def = Math.floor(def * 1.15);
+            } else if (this.gateType === 'double_dungeon') {
+                bossName = `👁️ Posąg Boga (Wielki Strażnik Ołtarza)`;
+                hp = Math.floor(hp * 1.40);
+                patk = Math.floor(patk * 1.30);
+                def = Math.floor(def * 1.20);
+            }
+
             this.monsters.push({
-                name: bossTemplate.name,
-                hp: bossTemplate.hp,
-                maxHp: bossTemplate.hp,
-                patk: bossTemplate.patk,
-                def: bossTemplate.def,
-                cooldown: 0,
+                name: bossName,
+                hp: hp,
+                maxHp: hp,
+                patk: patk,
+                def: def,
                 isBoss: true,
                 actionGauge: Math.floor(Math.random() * 30)
             });
-            this.battleLog.push(`[SYSTEM] FALA OSTATECZNA: Przed drużyną wyłania się boss - ${bossTemplate.name}!`);
+
+            this.battleLog.push(`[KOMNATA OSTATECZNA] Docierasz do: "${currentSectorName}". Pojawia się boss sekcji: ${bossName}!`);
         }
     }
 
     /**
      * Generates a procedural gear with random prefix, type, rarity, and stats
      */
-    generateRNGGear(rank) {
+    generateRNGGear(rank, rollBonus = 0) {
         const rarities = ['Szary', 'Zielony', 'Niebieski', 'Fioletowy', 'Pomarańczowy'];
-        const rolls = Math.random() * 100;
+        const rolls = Math.random() * 100 + rollBonus;
         
         let rarity = 'Szary';
         if (rolls > 99) rarity = 'Pomarańczowy';      // 1% Legendary
@@ -309,19 +442,25 @@ class DungeonsSystem {
      * Helper to retrieve base action-charge speed of monsters
      */
     getMonsterSpeed(monster) {
+        let speed = 12;
         if (monster.isBoss) {
-            if (monster.name.includes("Smok")) return 18;
-            if (monster.name.includes("Bellion")) return 22;
-            if (monster.name.includes("Golem")) return 11;
-            return 16;
+            if (monster.name.includes("Smok")) speed = 18;
+            else if (monster.name.includes("Bellion")) speed = 22;
+            else if (monster.name.includes("Golem")) speed = 11;
+            else speed = 16;
+        } else {
+            if (monster.name.includes("Goblin")) speed = 15;
+            else if (monster.name.includes("Zombie")) speed = 9;
+            else if (monster.name.includes("Szkielet")) speed = 12;
+            else if (monster.name.includes("Golem")) speed = 8;
+            else if (monster.name.includes("Jaszczuroczłek")) speed = 14;
+            else if (monster.name.includes("Żołnierz")) speed = 16;
+            else if (monster.name.includes("Posąg")) speed = 14;
         }
-        if (monster.name.includes("Goblin")) return 15;
-        if (monster.name.includes("Zombie")) return 9;
-        if (monster.name.includes("Szkielet")) return 12;
-        if (monster.name.includes("Golem")) return 8;
-        if (monster.name.includes("Jaszczuroczłek")) return 14;
-        if (monster.name.includes("Żołnierz")) return 16;
-        return 12;
+
+        if (monster.isElite) speed += 3;
+        if (this.gateType === 'red_gate') speed += 2;
+        return speed;
     }
 
     /**
@@ -339,7 +478,6 @@ class DungeonsSystem {
             const dex = (ally.derived && ally.derived.dex) ? ally.derived.dex : (ally.level * 2);
             const cooldownRed = (ally.derived && ally.derived.cooldownRed) ? ally.derived.cooldownRed : 0;
             const hasteMult = 1 + cooldownRed / 100;
-            // 18 base speed + DEX-based acceleration, scaled by Haste / cooldown reduction
             const speed = (18 + dex * 0.15) * hasteMult;
             ally.actionGauge = Math.min(100, (ally.actionGauge || 0) + speed);
         });
@@ -454,11 +592,11 @@ class DungeonsSystem {
             }
         });
 
-        // Check if all monsters in this wave died
+        // Check if all monsters in this sector died
         const allMonstersDead = this.monsters.every(m => m.hp <= 0);
         if (allMonstersDead) {
             this.currentWave++;
-            if (this.currentWave <= gate.waves) {
+            if (this.currentWave <= this.totalWaves) {
                 this.spawnWave(gateId);
             } else {
                 // Battle Win!
@@ -467,6 +605,13 @@ class DungeonsSystem {
                 
                 // Crystals Calculation (Prestige & Talent multipliers apply to crystal yield!)
                 let crystalsEarned = Math.floor(gate.rewards.crystalsMin + Math.random() * (gate.rewards.crystalsMax - gate.rewards.crystalsMin));
+
+                // Gate Type modifications for crystal drops
+                if (this.gateType === 'red_gate') {
+                    crystalsEarned = Math.floor(crystalsEarned * 1.50); // +50% crystals
+                } else if (this.gateType === 'double_dungeon') {
+                    crystalsEarned = Math.floor(crystalsEarned * 1.25); // +25% crystals
+                }
 
                 const goldUpgradeLvl = window.gameState.state.prestige.upgrades.gold || 0;
                 const crystalMult = 1.0 + (goldUpgradeLvl * 0.20) + (window.gameState.state.player.talent === 'talent_gold' ? 0.20 : 0.0);
@@ -482,9 +627,20 @@ class DungeonsSystem {
                     mercCutText = ` (Najemnicy pobrali ${cutCrystals} kryształów prowizji)`;
                 }
 
-                // Victory Boss loot: 100% guaranteed gear drop on victory!
-                const gearDropped = this.generateRNGGear(gate.rank);
+                // Victory Boss loot: 100% guaranteed gear drop on victory with Gate Type roll bonus!
+                let gearBonus = 0;
+                if (this.gateType === 'red_gate') gearBonus = 5;
+                if (this.gateType === 'double_dungeon') gearBonus = 15;
+                const gearDropped = this.generateRNGGear(gate.rank, gearBonus);
                 window.gameState.state.inventory.gear.push(gearDropped);
+
+                // Additional Gold bonus if Double Dungeon was cleared
+                let extraGoldText = "";
+                if (this.gateType === 'double_dungeon') {
+                    const goldBonus = Math.floor(300 + Math.random() * 1000);
+                    window.gameState.addGold(goldBonus);
+                    extraGoldText = ` oraz +${goldBonus} Sztuk Złota jako podarek Świątyni`;
+                }
 
                 // Save survivor HP and MP back to state
                 this.activeParty.forEach(ally => {
@@ -500,7 +656,7 @@ class DungeonsSystem {
                     }
                 });
 
-                // Apply resources (No gold from monsters!)
+                // Apply resources (No gold from monsters except temple gifts!)
                 window.gameState.addManaCrystals(crystalsEarned);
 
                 // Clear hired mercenaries from active state
@@ -508,7 +664,7 @@ class DungeonsSystem {
                 window.gameState.save();
 
                 log.push(`[SYSTEM] BRAMA OCZYSZCZONA Z SUKCESEM!`);
-                log.push(`Otrzymane nagrody: +${crystalsEarned} Kryształów Mana${mercCutText}!`);
+                log.push(`Otrzymane nagrody: +${crystalsEarned} Kryształów Mana${mercCutText}${extraGoldText}!`);
                 log.push(`[SYSTEM - BOSS DROP] ZNALAZŁEŚ PRZEDMIOT: [${gearDropped.rarity}] ${gearDropped.name}!`);
 
                 // Update active quest progress
@@ -535,7 +691,8 @@ class DungeonsSystem {
                 .sort((a, b) => b.aggro - a.aggro)[0];
 
             if (target) {
-                const finalDmg = Math.max(1, Math.floor(monster.patk - target.derived.def * 0.3));
+                // Balanced Armor mitigation with constant pierce floor (monsters always deal at least 15% of their attack power)
+                const finalDmg = Math.max(Math.floor(monster.patk * 0.15), Math.floor(monster.patk - target.derived.def * 0.28));
                 target.hp = Math.max(0, target.hp - finalDmg);
                 log.push(`[PRZECIWNIK] ${monster.name} zadaje szybki cios, zadając ${finalDmg} obrażeń dla ${target.name}.`);
             }
@@ -582,13 +739,22 @@ class DungeonsSystem {
      */
     awardMonsterExp(monster, gate) {
         let expAwarded = 0;
+        const totalW = this.totalWaves || gate.waves || 3;
         
         if (monster.isBoss) {
             expAwarded = Math.floor(gate.rewards.exp * 0.5);
         } else {
-            const denom = Math.max(1, (gate.waves - 1) * 2.5);
+            const denom = Math.max(1, (totalW - 1) * 2.5);
             expAwarded = Math.floor((gate.rewards.exp * 0.5) / denom);
         }
+
+        // Apply Gate Type EXP multipliers
+        if (this.gateType === 'red_gate') {
+            expAwarded = Math.floor(expAwarded * 1.25);
+        } else if (this.gateType === 'double_dungeon') {
+            expAwarded = Math.floor(expAwarded * 2.20); // +120% EXP bonus
+        }
+
         expAwarded = Math.max(1, expAwarded);
 
         // Apply exp to player
@@ -614,18 +780,26 @@ class DungeonsSystem {
 
         // Regular monsters drops: 30% chance for 1-2 crystals, 8% chance for random gear
         if (!monster.isBoss) {
-            if (Math.random() < 0.30) {
-                const crystals = Math.floor(1 + Math.random() * 2);
+            let dropChanceMult = 1.0;
+            if (this.gateType === 'red_gate') dropChanceMult = 1.5;
+            if (this.gateType === 'double_dungeon') dropChanceMult = 1.8;
+
+            if (Math.random() < (0.30 * dropChanceMult)) {
+                let crystals = Math.floor(1 + Math.random() * 2);
+                if (this.gateType === 'red_gate') crystals = Math.floor(crystals * 2); // Double pre-boss crystals
                 window.gameState.addManaCrystals(crystals);
                 this.battleLog.push(`[ŁUP - KRYSZTAŁY] Pokonany wróg upuszcza +${crystals} magicznych kryształów mana!`);
             }
-            if (Math.random() < 0.08) {
+            if (Math.random() < (0.08 * dropChanceMult)) {
                 const hpPots = window.gameState.state.inventory.hpPotions !== undefined ? window.gameState.state.inventory.hpPotions : 0;
                 const mpPots = window.gameState.state.inventory.mpPotions !== undefined ? window.gameState.state.inventory.mpPotions : 0;
                 const slotsUsed = window.gameState.state.inventory.gear.length + (hpPots > 0 ? 1 : 0) + (mpPots > 0 ? 1 : 0);
                 
                 if (slotsUsed < 20) {
-                    const gear = this.generateRNGGear(gate.rank);
+                    let gearBonus = 0;
+                    if (this.gateType === 'red_gate') gearBonus = 5;
+                    if (this.gateType === 'double_dungeon') gearBonus = 15;
+                    const gear = this.generateRNGGear(gate.rank, gearBonus);
                     window.gameState.state.inventory.gear.push(gear);
                     this.battleLog.push(`[ŁUP - PRZEDMIOT] Pokonany wróg upuszcza rzadki przedmiot: [${gear.rarity}] ${gear.name}!`);
                 }

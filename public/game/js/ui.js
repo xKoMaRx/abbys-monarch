@@ -1524,7 +1524,7 @@ class UIEngine {
             const isActive = state.world.currentGate === gateId ? 'active-run' : '';
             
             if (isUnlocked) {
-                const tooltipText = `Brama: ${gate.name} (Ranga ${gate.rank})&#10;Liczba fal wrogów: ${gate.waves}&#10;Zwykli przeciwnicy: ${gate.mobTemplate.name} (HP: ${gate.mobTemplate.hp}, ATK: ${gate.mobTemplate.patk})&#10;Boss obszaru: ${gate.boss.name} (HP: ${gate.boss.hp}, ATK: ${gate.boss.patk})&#10;Szansa na losowy loot: 35%&#10;(Szary: 60% | Zielony: 25% | Niebieski: 10% | Fioletowy: 4% | Pomarańczowy: 1%)`;
+                const tooltipText = `Brama: ${gate.name} (Ranga ${gate.rank})&#10;Liczba sekcji lochu: ${gate.waves}&#10;Zwykli przeciwnicy: ${gate.mobTemplate.name} (HP: ${gate.mobTemplate.hp}, ATK: ${gate.mobTemplate.patk})&#10;Boss obszaru: ${gate.boss.name} (HP: ${gate.boss.hp}, ATK: ${gate.boss.patk})&#10;Poziom lochu generuje proceduralne typy bram (np. Czerwone Bramy, Podwójne Lochy) z dodatkowym lootem!`;
                 
                 container.innerHTML += `
                     <div class="gate-card ${isActive}" data-tooltip="${tooltipText}">
@@ -1566,8 +1566,27 @@ class UIEngine {
             activeView.classList.remove('hidden');
 
             const gate = window.dungeonsSystem.gates[state.world.currentGate];
-            document.getElementById('battle-gate-name').innerText = gate.name;
-            document.getElementById('battle-wave-text').innerText = `Fala ${window.dungeonsSystem.currentWave}/${gate.waves}`;
+            const system = window.dungeonsSystem;
+            
+            // Render gate name and include Red Gate / Double Dungeon prefix indicators
+            let typePrefix = "";
+            let typeColor = "#00f3ff"; // default cyan
+            if (system.gateType === 'red_gate') {
+                typePrefix = "🔴 [Czerwona Brama] ";
+                typeColor = "#ff3333";
+            } else if (system.gateType === 'double_dungeon') {
+                typePrefix = "👁️ [Podwójny Loch] ";
+                typeColor = "#d500f9";
+            }
+            
+            const gateNameEl = document.getElementById('battle-gate-name');
+            if (gateNameEl) {
+                gateNameEl.style.color = typeColor;
+                gateNameEl.innerText = typePrefix + gate.name;
+            }
+
+            const currentSectorName = system.sectors[system.currentWave - 1] || "Głęboki Sektor";
+            document.getElementById('battle-wave-text').innerText = `Sekcja ${system.currentWave}/${system.totalWaves} - "${currentSectorName}"`;
 
             // Allies mobs
             const alliesBox = document.getElementById('battle-party-mobs');
