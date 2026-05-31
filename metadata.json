@@ -1,0 +1,6 @@
+{
+  "name": "Abyss Monarch Companion Workspace",
+  "description": "Profesjonalny pulpit deweloperski, podgląd gry, eksplorator kodu oraz zarządca zapisów lokalnych dla RPG Abyss Monarch.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

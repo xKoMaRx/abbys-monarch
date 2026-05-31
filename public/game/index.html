@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abyss Monarch - RPG Urban Idle Adventure</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ========================================== -->
+    <!-- 0. EKRAN STARTOWY (MENU GŁÓWNE / LOGOWANIE)-->
+    <!-- ========================================== -->
+    <div id="start-screen" class="modal-overlay">
+        <div class="start-box glass-panel">
+            <h1 class="pulsing-logo glowing-text violet-neon">ABYSS MONARCH</h1>
+            <p class="subtitle glowing-text cyan-neon">SOLO GAMER EDITION</p>
+
+            <div class="profiles-section glass-panel">
+                <h3><i class="fa-solid fa-users-viewfinder"></i> LOGOWANIE SYSTEMU / WYBÓR PROFILU</h3>
+                <div id="profiles-list-container">
+                    <!-- Wygenerowane dynamicznie karty profili -->
+                    <p style="text-align: center; color: var(--text-muted); font-size: 11px;">Brak utworzonych łowców w systemie lokalnym.</p>
+                </div>
+            </div>
+
+            <button id="create-new-profile-btn" class="neon-btn cyan-btn" onclick="window.uiEngine.openCharacterCreator()"><i class="fa-solid fa-user-plus"></i> STWÓRZ NOWEGO ŁOWCĘ</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- KREATOR POSTACI 2.0 (MODAL OVERLAY)        -->
+    <!-- ========================================== -->
+    <div id="character-creator" class="modal-overlay hidden">
+        <div class="creator-box glass-panel">
+            <h2 class="neon-title cyan-neon">KREATOR ŁOWCY</h2>
+            <p class="subtitle">System przydzielił Ci status unikalnego Gracza. Spersonalizuj postać:</p>
+            
+            <div class="form-group">
+                <label for="player-name-input">Imię Łowcy:</label>
+                <input type="text" id="player-name-input" value="Jin-Woo" placeholder="Podaj imię...">
+            </div>
+
+            <!-- Wybór Portretu Awatara -->
+            <div class="avatar-selection-section">
+                <label class="section-label">WYBIERZ PORTRET AWATARA:</label>
+                <div class="avatar-selector-grid">
+                    <div id="sel-avatar-shadow" class="avatar-option active cursor-pointer" onclick="window.uiEngine.selectAvatar('avatar_shadow')">
+                        <i class="fa-solid fa-user-secret"></i>
+                        <span>Cień</span>
+                    </div>
+                    <div id="sel-avatar-flame" class="avatar-option cursor-pointer" onclick="window.uiEngine.selectAvatar('avatar_flame')">
+                        <i class="fa-solid fa-fire"></i>
+                        <span>Płomień</span>
+                    </div>
+                    <div id="sel-avatar-shield" class="avatar-option cursor-pointer" onclick="window.uiEngine.selectAvatar('avatar_shield')">
+                        <i class="fa-solid fa-shield-cat"></i>
+                        <span>Tarcza</span>
+                    </div>
+                    <div id="sel-avatar-hunter" class="avatar-option cursor-pointer" onclick="window.uiEngine.selectAvatar('avatar_hunter')">
+                        <i class="fa-solid fa-crosshairs"></i>
+                        <span>Łowca</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wybór Daru Przebudzenia (Talentu) -->
+            <div class="talent-selection-section">
+                <label class="section-label">WYBIERZ DAR PRZEBUDZENIA (TALENT PASYWNY):</label>
+                <div class="talent-selector-grid">
+                    <div id="sel-talent-focus" class="talent-option active cursor-pointer" onclick="window.uiEngine.selectTalent('talent_focus')">
+                        <strong>Skupienie Gracza</strong>
+                        <p>-10% odnowień czarów w Bramach</p>
+                    </div>
+                    <div id="sel-talent-blood" class="talent-option cursor-pointer" onclick="window.uiEngine.selectTalent('talent_blood')">
+                        <strong>Krew Tytana</strong>
+                        <p>Zwiększa maksymalne HP o +15%</p>
+                    </div>
+                    <div id="sel-talent-well" class="talent-option cursor-pointer" onclick="window.uiEngine.selectTalent('talent_well')">
+                        <strong>Studnia Many</strong>
+                        <p>Zwiększa maksymalne MP o +15%</p>
+                    </div>
+                    <div id="sel-talent-gold" class="talent-option cursor-pointer" onclick="window.uiEngine.selectTalent('talent_gold')">
+                        <strong>Złoty Dotyk</strong>
+                        <p>Daje +20% złota z rajdów lochów</p>
+                    </div>
+                    <div id="sel-talent-crit" class="talent-option cursor-pointer" onclick="window.uiEngine.selectTalent('talent_crit')">
+                        <strong>Zabójcza Precyzja</strong>
+                        <p>Zwiększa szansę na krytyka o +5%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statystyki -->
+            <div class="stats-allocation">
+                <label class="section-label">ROZDZIEL STATYSTYKI POCZĄTKOWE:</label>
+                <p class="points-left">Pozostałe punkty: <span id="starting-points-count" class="glowing-text cyan-neon">10</span></p>
+                
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-dumbbell"></i> STR (Siła)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('str', -1)">-</button>
+                        <span id="start-str" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('str', 1)">+</button>
+                    </div>
+                </div>
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-bolt"></i> DEX (Zręczność)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('dex', -1)">-</button>
+                        <span id="start-dex" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('dex', 1)">+</button>
+                    </div>
+                </div>
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-heart"></i> VIT (Witalność)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('vit', -1)">-</button>
+                        <span id="start-vit" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('vit', 1)">+</button>
+                    </div>
+                </div>
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-brain"></i> INT (Inteligencja)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('int', -1)">-</button>
+                        <span id="start-int" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('int', 1)">+</button>
+                    </div>
+                </div>
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-book-open"></i> WIS (Mądrość)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('wis', -1)">-</button>
+                        <span id="start-wis" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('wis', 1)">+</button>
+                    </div>
+                </div>
+                <div class="stat-control-row">
+                    <span class="stat-label"><i class="fa-solid fa-clover"></i> LUK (Szczęście)</span>
+                    <div class="buttons">
+                        <button onclick="window.uiEngine.adjustStartingStat('luk', -1)">-</button>
+                        <span id="start-luk" class="val">10</span>
+                        <button onclick="window.uiEngine.adjustStartingStat('luk', 1)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="neon-btn violet-btn" style="width: 40%;" onclick="window.uiEngine.closeCharacterCreator()">ANULUJ</button>
+                <button id="confirm-creation-btn" class="neon-btn cyan-btn" style="width: 60%;" onclick="window.uiEngine.confirmCharacterCreation()">PRZEBUDŹ ŁOWCĘ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- GŁÓWNY PANEL GRY (PO LOGOWANIU)            -->
+    <!-- ========================================== -->
+    <div id="app-container" class="hidden">
+
+        <!-- SYSTEM HUD BAR (TOP) -->
+        <header id="system-hud" class="glass-panel">
+            <div class="player-summary">
+                <div id="hud-avatar-icon" class="avatar-hud"><i class="fa-solid fa-user-ninja"></i></div>
+                <div class="hud-profile-info">
+                    <div class="name-class">
+                        <span id="hud-player-name" class="glowing-text cyan-neon">Jin-Woo</span>
+                        <span id="hud-player-class" class="badge">Novice</span>
+                    </div>
+                    <div class="hud-bars">
+                        <div class="hp-bar-container mini-bar">
+                            <div id="hud-hp-fill" class="hp-fill"></div>
+                            <span id="hud-hp-text">HP: 150/150</span>
+                        </div>
+                        <div class="mp-bar-container mini-bar">
+                            <div id="hud-mp-fill" class="mp-fill"></div>
+                            <span id="hud-mp-text">MP: 50/50</span>
+                        </div>
+                        <div class="exp-bar-container mini-bar">
+                            <div id="hud-exp-fill" class="exp-fill"></div>
+                            <span id="hud-exp-text">EXP: 0/100</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-resources">
+                <div class="res-item" data-tooltip="Złoto (Gold)&#10;Waluta miejska. Używana do opłacania treningów, kupowania zwojów magicznych i prezentów oraz wynajmu najemników."><i class="fa-solid fa-coins gold-text"></i> <span id="hud-gold">500</span> G</div>
+                <div class="res-item" data-tooltip="Kryształy Mana (Mana Crystals)&#10;Zdobywane z bossów w Bramach. Sprzedaj je w Stowarzyszeniu Łowców za złoto (1 kryształ = 10 G)."><i class="fa-solid fa-gem crystal-text"></i> <span id="hud-crystals">0</span> Rdzenie</div>
+                <div class="res-item" data-tooltip="Czas i Cykl Dobowy&#10;Doba trwa 24 godziny. Dzień: 06:00 - 18:00 | Noc: 18:00 - 06:00.&#10;Czas upływa przy akcjach miejskich. Pora dobi wpływa na obecność NPC."><i class="fa-solid fa-cloud-moon time-text"></i> Dzień <span id="hud-day">1</span> (<span id="hud-time">08:00</span>)</div>
+                <div class="res-item" data-tooltip="Mikstury Zdrowia (HP)&#10;Używane automatycznie w lochach Bramy, gdy HP postaci w drużynie spadnie poniżej 35%. Przywraca 40% maksymalnego HP. Kupisz je w Dzielnicy Handlowej."><i class="fa-solid fa-flask" style="color: #f44336;"></i> <span id="hud-hp-potions-count">0</span> HP</div>
+                <div class="res-item" data-tooltip="Mikstury Many (MP)&#10;Używane automatycznie w lochach Bramy, gdy MP postaci w drużynie spadnie poniżej 20%. Przywraca 40% maksymalnego MP. Kupisz je w Dzielnicy Handlowej."><i class="fa-solid fa-flask" style="color: #2196f3;"></i> <span id="hud-mp-potions-count">0</span> MP</div>
+            </div>
+
+            <div class="active-quest-hud glass-panel" data-tooltip="Aktywne Zadanie Gracza&#10;Wykonuj polecenia systemu łowców, aby zdobywać nagrody i odblokowywać nowe relacje w mieście.">
+                <span class="label">ZADANIE GRACZA:</span>
+                <span id="hud-quest-title">Tutorial</span>
+                <div class="quest-progress-small">
+                    <div id="hud-quest-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- KONTENER ZAKŁADEK -->
+        <main id="main-content">
+
+            <!-- WIDOK 1: MAPA MIASTA -->
+            <section id="view-city" class="tab-view active">
+                <div class="map-grid">
+                    <div class="map-item home glass-panel cursor-pointer tooltip-down" onclick="window.uiEngine.enterCityLocation('home')" data-tooltip="Mieszkanie Bohatera&#10;Sen regeneruje w pełni HP/MP. Trening Daily Quest daje +1 do STR/DEX/VIT (raz dziennie). Pozwala dokonywać Przełomów Otchłani i kupować permanentne ulepszenia prestiżowe.">
+                        <i class="fa-solid fa-house-user icon"></i>
+                        <h3>Mieszkanie</h3>
+                        <p class="badge">Dom & Prestiż</p>
+                    </div>
+                    <div class="map-item park glass-panel cursor-pointer tooltip-down" onclick="window.uiEngine.enterCityLocation('park')" data-tooltip="Park Centralny&#10;Idealne miejsce na spacery i randki z towarzyszami. Spacery w parku dają +25% do zyskiwanej Sympatii. Można tu spotkać wolontariuszkę Shin Yu-Na.">
+                        <i class="fa-solid fa-tree icon"></i>
+                        <h3>Park Centralny</h3>
+                        <p class="badge">Randki & Spotkania</p>
+                    </div>
+                    <div class="map-item shopping glass-panel cursor-pointer tooltip-down" onclick="window.uiEngine.enterCityLocation('shopping')" data-tooltip="Dzielnica Handlowa&#10;Butiki odzieżowe i kawiarnie. Kupuj podarki dla towarzyszy, aby podnieść ich Sympatię, lub zapraszaj ich na romantyczne desery w kawiarni.">
+                        <i class="fa-solid fa-bag-shopping icon"></i>
+                        <h3>Dzielnica Handlowa</h3>
+                        <p class="badge">Butiki & Prezenty</p>
+                    </div>
+                    <div class="map-item association glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('association')" data-tooltip="Stowarzyszenie Łowców&#10;Biuro legalizacji. Wymieniaj zdobyte mana kryształy na złoto (1 kryształ = 10 G) oraz wynajmuj generowanych najemników (Warrior, Mage, Cleric) do pomocy w Bramach.">
+                        <i class="fa-solid fa-shield-halved icon"></i>
+                        <h3>Stowarzyszenie Łowców</h3>
+                        <p class="badge">Najemnicy & Mana</p>
+                    </div>
+                    <div class="map-item tavern glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('tavern')" data-tooltip="Tawerna Łowców&#10;Lokal otwarty głównie nocą. Najlepsze miejsce do rekrutacji towarzyszy, słuchania plotek odblokowujących unikalne Bramy oraz luźnych pogawędek przy drinku.">
+                        <i class="fa-solid fa-beer-mug-empty icon"></i>
+                        <h3>Tawerna Łowców</h3>
+                        <p class="badge">Plotki & Rekrutacja</p>
+                    </div>
+                    <div class="map-item academy glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('academy')" data-tooltip="Biblioteka & Akademia&#10;Spędź 4 godziny na studiowaniu ksiąg magicznych (koszt: 50 G), aby trwale zwiększyć statystykę Inteligencji (INT) lub Mądrości (WIS) o +1.">
+                        <i class="fa-solid fa-book icon"></i>
+                        <h3>Biblioteka & Akademia</h3>
+                        <p class="badge">Studia INT/WIS</p>
+                    </div>
+                    <div class="map-item training glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('training')" data-tooltip="Centrum Treningowe&#10;Ciężki trening sparringowy na siłowni (koszt: 100 G, czas: 4h). Pozwala trwale zwiększyć statystykę Siły (STR) lub Zręczności (DEX) o +2.">
+                        <i class="fa-solid fa-dumbbell icon"></i>
+                        <h3>Centrum Treningowe</h3>
+                        <p class="badge">Trening STR/DEX</p>
+                    </div>
+                    <div class="map-item abyss_market glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('abyss_market')" data-tooltip="Rynek Otchłani&#10;Podziemny targ czarnorynkowy. Zakupisz tu potężne księgi czarów i zwoje zaklęć (Kula Ognia, Leczenie, Tarcza Mana itp.), których mogą uczyć się Twoje postacie.">
+                        <i class="fa-solid fa-skull icon"></i>
+                        <h3>Rynek Otchłani</h3>
+                        <p class="badge">Magia & Księgi</p>
+                    </div>
+                    <div class="map-item gates_sector glass-panel cursor-pointer" onclick="window.uiEngine.enterCityLocation('gates_sector')" data-tooltip="Sektor Bram (Gates Sector)&#10;Baza wypadowa lochów. Wybieraj odblokowane Bramy z listy i wysyłaj swoją drużynę na automatyczne, taktyczne rajdy po złoto i epickie dropy.">
+                        <i class="fa-solid fa-door-open icon"></i>
+                        <h3>Sektor Bram</h3>
+                        <p class="badge">Rajdy w Lochach</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SZCZEGÓŁY LOKACJI / DIALOGÓW -->
+            <section id="location-exploration" class="hidden">
+                <div class="explore-box glass-panel">
+                    <button class="back-btn" onclick="window.uiEngine.leaveLocation()"><i class="fa-solid fa-arrow-left"></i> Powrót na Mapę</button>
+                    
+                    <h2 id="location-explore-title" class="neon-title cyan-neon">LOKACJA</h2>
+                    <p id="location-explore-desc">Opis...</p>
+
+                    <div id="location-action-area" class="location-specific-actions">
+                        <!-- Akcje w danej lokacji -->
+                    </div>
+
+                    <!-- System Relacji i Dialogu (Visual Novel) -->
+                    <div id="npc-interaction-panel" class="hidden glass-panel">
+                        <div class="npc-header">
+                            <div class="npc-avatar"><i class="fa-solid fa-user-ninja"></i></div>
+                            <div class="npc-name-stats">
+                                <h3 id="npc-active-name" class="glowing-text">NPC</h3>
+                                <div class="hud-relations">
+                                    <span class="relation-badge trust-badge"><i class="fa-solid fa-shield"></i> Zaufanie: <span id="npc-trust-val">10</span>/100</span>
+                                    <span class="relation-badge affection-badge"><i class="fa-solid fa-heart"></i> Sympatia: <span id="npc-affection-val">0</span>/100</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="npc-dialogue-balloon">
+                            <p id="npc-dialogue-text">"Kwestia NPC..."</p>
+                        </div>
+                        <div id="dialogue-choices" class="dialogue-choices-grid">
+                            <!-- Opcje rozmowy -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WIDOK 2: DRUŻYNA & EKWIPUNEK (PARTY & BAG) -->
+            <section id="view-party" class="tab-view hidden">
+                <div class="party-container">
+                    
+                    <div class="party-list glass-panel" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <h3>SKŁAD DRUŻYNY</h3>
+                            <div id="active-party-slots"></div>
+                        </div>
+                        <div>
+                            <h3>POZOSTALI ŁOWCY</h3>
+                            <div id="reserve-party-slots"></div>
+                        </div>
+                        <div class="logout-panel" style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                            <button class="neon-btn violet-btn" style="width: 100%;" onclick="window.uiEngine.executeLogout()"><i class="fa-solid fa-right-from-bracket"></i> WYLOGUJ Z PROFILU</button>
+                        </div>
+                    </div>
+
+                    <div class="character-details glass-panel">
+                        <h3 id="selected-char-name" class="glowing-text">Wybierz postać</h3>
+                        
+                        <div id="char-sheet-content" class="hidden">
+                            <div class="class-summary">
+                                Klasa: <span id="char-class-badge" class="badge">Novice</span>
+                                Poziom: <span id="char-level-val">1</span>
+                            </div>
+
+                            <div class="stats-derived-grid">
+                                <div class="stat-card tooltip-down tooltip-right" data-tooltip="Siła (STR)&#10;Zwiększa podstawowy atak fizyczny (PATK) oraz pancerz (DEF). Kluczowa dla Wojowników, Zabójców i Łuczników.">
+                                    <span class="label">Siła (STR)</span>
+                                    <span id="char-stat-str" class="val">10</span>
+                                    <div id="player-stat-upgrade-str" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('str')">+</button>
+                                    </div>
+                                </div>
+                                <div class="stat-card tooltip-down" data-tooltip="Zręczność (DEX)&#10;Zwiększa szansę na uniki (Dodge), szansę na krytyka (Crit), szybkość ładowania skilli (Haste) oraz atak fizyczny.">
+                                    <span class="label">Zręczność (DEX)</span>
+                                    <span id="char-stat-dex" class="val">10</span>
+                                    <div id="player-stat-upgrade-dex" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('dex')">+</button>
+                                    </div>
+                                </div>
+                                <div class="stat-card tooltip-down tooltip-left" data-tooltip="Witalność (VIT)&#10;Zwiększa maksymalne punkty życia (Max HP), obronę fizyczną (DEF) oraz tempo pasywnej regeneracji HP (+HP/s).">
+                                    <span class="label">Witalność (VIT)</span>
+                                    <span id="char-stat-vit" class="val">10</span>
+                                    <div id="player-stat-upgrade-vit" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('vit')">+</button>
+                                    </div>
+                                </div>
+                                <div class="stat-card tooltip-down tooltip-right" data-tooltip="Inteligencja (INT)&#10;Zwiększa maks. punkty many (Max MP) oraz ataki magiczne (MATK). Kluczowa dla Magów i Kleryków.">
+                                    <span class="label">Inteligencja (INT)</span>
+                                    <span id="char-stat-int" class="val">10</span>
+                                    <div id="player-stat-upgrade-int" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('int')">+</button>
+                                    </div>
+                                </div>
+                                <div class="stat-card tooltip-down" data-tooltip="Mądrość (WIS)&#10;Zwiększa maks. punkty many (Max MP), regenerację many (+MP/s) oraz skrócenie czasu odnowienia zaklęć (Haste).">
+                                    <span class="label">Mądrość (WIS)</span>
+                                    <span id="char-stat-wis" class="val">10</span>
+                                    <div id="player-stat-upgrade-wis" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('wis')">+</button>
+                                    </div>
+                                </div>
+                                <div class="stat-card tooltip-down tooltip-left" data-tooltip="Szczęście (LUK)&#10;Zwiększa szansę na krytyka (Crit), uniki (Dodge), siłę ciosu krytycznego oraz szansę na unikalny loot z Bram.">
+                                    <span class="label">Szczęście (LUK)</span>
+                                    <span id="char-stat-luk" class="val">10</span>
+                                    <div id="player-stat-upgrade-luk" class="stat-upgrader hidden">
+                                        <button onclick="window.uiEngine.upgradePlayerStat('luk')">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="player-stat-points-notification" class="stat-points-info hidden">
+                                Dostępne punkty statystyk: <span id="player-available-stat-points" class="glowing-text">5</span>
+                            </div>
+
+                            <!-- Klasyczny układ RPG: Wyposażenie & Plecak -->
+                            <div class="char-rpg-layout">
+                                <!-- KOLUMNA LEWA: SYLWETKA I WYPOSAŻENIE (PAPER DOLL) -->
+                                <div class="equipment-paper-doll glass-panel">
+                                    <h4 class="glowing-text"><i class="fa-solid fa-shield-halved"></i> WYPOSAŻENIE</h4>
+                                    <div class="paper-doll-grid">
+                                        <!-- KOLUMNA LEWA -->
+                                        <div class="paper-doll-col left-slots">
+                                            <!-- Naramiennik L -->
+                                            <div id="eq-slot-shoulder_l" class="eq-slot-sq empty tooltip-down tooltip-right" data-tooltip="Slot Naramiennika (Lewy) [Pusty]">
+                                                <i class="fa-solid fa-user-shield placeholder-icon"></i>
+                                            </div>
+                                            <!-- Peleryna -->
+                                            <div id="eq-slot-cape" class="eq-slot-sq empty tooltip-down tooltip-right" data-tooltip="Slot Peleryny [Pusty]">
+                                                <i class="fa-solid fa-vest placeholder-icon"></i>
+                                            </div>
+                                            <!-- Rękawica L -->
+                                            <div id="eq-slot-glove_l" class="eq-slot-sq empty tooltip-down tooltip-right" data-tooltip="Slot Rękawicy (Lewej) [Pusty]">
+                                                <i class="fa-solid fa-mitten placeholder-icon"></i>
+                                            </div>
+                                            <!-- Lewa Dłoń (Broń) -->
+                                            <div id="eq-slot-weapon_l" class="eq-slot-sq empty tooltip-down tooltip-right" data-tooltip="Lewa Dłoń (Broń Główna) [Pusty]">
+                                                <i class="fa-solid fa-sword placeholder-icon" style="transform: rotate(45deg);"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- KOLUMNA ŚRODKOWA -->
+                                        <div class="paper-doll-col center-slots">
+                                            <!-- Głowa -->
+                                            <div id="eq-slot-head" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Głowy [Pusty]">
+                                                <i class="fa-solid fa-crown placeholder-icon"></i>
+                                            </div>
+                                            <div class="char-silhouette-sq">
+                                                <div id="char-silhouette-avatar" class="avatar-hud" style="width: 55px; height: 55px; font-size: 22px; border-radius: 50%;">
+                                                    <i class="fa-solid fa-user-secret"></i>
+                                                </div>
+                                            </div>
+                                            <!-- Klata -->
+                                            <div id="eq-slot-chest" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Klatki Piersiowej [Pusty]">
+                                                <i class="fa-solid fa-shirt placeholder-icon"></i>
+                                            </div>
+                                            <!-- Spodnie -->
+                                            <div id="eq-slot-pants" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Spodni [Pusty]">
+                                                <i class="fa-solid fa-socks placeholder-icon" style="transform: scaleY(-1);"></i>
+                                            </div>
+                                            <!-- Buty -->
+                                            <div id="eq-slot-boots" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Butów [Pusty]">
+                                                <i class="fa-solid fa-shoe-prints placeholder-icon"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- KOLUMNA PRAWA -->
+                                        <div class="paper-doll-col right-slots">
+                                            <!-- Naramiennik P -->
+                                            <div id="eq-slot-shoulder_r" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Naramiennika (Prawy) [Pusty]">
+                                                <i class="fa-solid fa-user-shield placeholder-icon"></i>
+                                            </div>
+                                            <!-- Pas -->
+                                            <div id="eq-slot-belt" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Pasa [Pusty]">
+                                                <i class="fa-solid fa-grip-lines placeholder-icon"></i>
+                                            </div>
+                                            <!-- Rękawica P -->
+                                            <div id="eq-slot-glove_r" class="eq-slot-sq empty tooltip-down" data-tooltip="Slot Rękawicy (Prawej) [Pusty]">
+                                                <i class="fa-solid fa-mitten placeholder-icon"></i>
+                                            </div>
+                                            <!-- Prawa Dłoń (Broń/Tarcza) -->
+                                            <div id="eq-slot-weapon_r" class="eq-slot-sq empty tooltip-down" data-tooltip="Prawa Dłoń (Broń/Tarcza Druga) [Pusty]">
+                                                <i class="fa-solid fa-shield-halved placeholder-icon"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SEKCJA JUBILERSKA (PIERŚCIENIE) -->
+                                    <div class="paper-doll-rings-container glass-panel">
+                                        <div class="rings-hand-col">
+                                            <div class="rings-label">Pierścienie L</div>
+                                            <div class="rings-row">
+                                                <div id="eq-slot-ring_l1" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Lewy 1 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_l2" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Lewy 2 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_l3" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Lewy 3 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_l4" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Lewy 4 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_l5" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Lewy 5 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                            </div>
+                                        </div>
+                                        <div class="rings-hand-col">
+                                            <div class="rings-label">Pierścienie P</div>
+                                            <div class="rings-row">
+                                                <div id="eq-slot-ring_r1" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Prawy 1 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_r2" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Prawy 2 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_r3" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Prawy 3 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_r4" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Prawy 4 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                                <div id="eq-slot-ring_r5" class="eq-slot-ring empty tooltip-down" data-tooltip="Pierścień Prawy 5 [Pusty]"><i class="fa-solid fa-ring"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- KOLUMNA PRAWA: STATYSTYKI POCHODNE, PLECAK I AWANSE -->
+                                <div class="char-info-plecak" style="display: flex; flex-direction: column; gap: 15px;">
+                                    <div class="derived-stats-box glass-panel" style="padding: 15px;">
+                                        <h4 style="font-family: var(--font-heading); font-size: 11px; margin-bottom: 10px; color: var(--text-muted);"><i class="fa-solid fa-chart-line"></i> Statystyki Pochodne</h4>
+                                        <ul style="list-style: none;">
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Maksymalna ilość punktów życia (Max HP). Gdy spadnie do 0, postać staje się nieprzytomna. Zależy od VIT i STR.">Maks. HP: <span id="char-derived-hp" class="glowing-text cyan-neon">150</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Maksymalna ilość punktów many (Max MP). Potrzebna do używania aktywnych czarów w Bramach. Zależy od INT i WIS.">Maks. MP: <span id="char-derived-mp" class="glowing-text cyan-neon">50</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Fizyczny Atak (PATK). Wpływa na moc zwykłych ciosów i skilli fizycznych. Zależy od STR i DEX.">Fizyczny ATK (PATK): <span id="char-derived-patk" class="glowing-text cyan-neon">20</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Magiczny Atak (MATK). Zwiększa moc rzucanych czarów bojowych oraz skuteczność czarów leczących. Zależy od INT.">Magiczny ATK (MATK): <span id="char-derived-matk" class="glowing-text cyan-neon">10</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Obrona fizyczna (DEF). Procentowo redukuje fizyczne obrażenia zadawane przez wrogów. Zależy od VIT i STR.">Obrona (DEF): <span id="char-derived-def" class="glowing-text cyan-neon">5</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Szansa na całkowite uniknięcie ataku wroga. Maksymalnie 30%. Zależy od DEX.">Uniki (Dodge): <span id="char-derived-dodge" class="glowing-text cyan-neon">5%</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.02);" data-tooltip="Szansa na zadanie ciosu krytycznego (zwiększone obrażenia). Maksymalnie 60%. Zależy od DEX, LUK i talentu.">Kryt (Crit): <span id="char-derived-crit" class="glowing-text cyan-neon">5%</span></li>
+                                            <li style="font-size: 11px; padding: 4px 0;" data-tooltip="Skrócenie czasu odnowienia skilli (Cooldown Red). Maksymalnie 40%. Zależy od WIS, DEX i talentu.">Cooldowny (Haste): <span id="char-derived-cd" class="glowing-text cyan-neon">0%</span></li>
+                                        </ul>
+                                    </div>
+
+                                    <!-- Plecak (Backpack grid) -->
+                                    <div class="bag-inventory-section glass-panel" style="padding: 15px;">
+                                        <h4 class="glowing-text" style="font-size: 11px; color: var(--cyan-neon); margin-bottom: 8px;"><i class="fa-solid fa-box-open"></i> PLECAK GRACZA (<span id="backpack-slots-used" class="cyan-neon">0</span>/20)</h4>
+                                        <p class="subtitle" style="font-size: 9px; color: var(--text-muted); margin-bottom: 12px;">Backpack Limit: 20 slots. Wybierz przedmiot w siatce plecaka, aby go zbadać, założyć lub sprzedać.</p>
+                                        <div id="inventory-gear-bag" class="backpack-grid">
+                                            <!-- Dynamiczne 20 kratek plecaka -->
+                                        </div>
+                                        <div id="gear-item-details" class="hidden glass-panel" style="padding: 10px; background: rgba(0,0,0,0.4); border-color: var(--violet-neon);">
+                                            <h5 id="gear-name-display" class="glowing-text" style="font-size: 11px;">Przedmiot</h5>
+                                            <p id="gear-stats-display" style="font-size: 10px; margin-top: 5px; line-height: 1.4;"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="class-promotions-section glass-panel">
+                                <h4>Ścieżka Awansu Klasowego</h4>
+                                <div id="promotions-tree" class="promotions-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WIDOK 3: UMIEJĘTNOŚCI -->
+            <section id="view-skills" class="tab-view hidden">
+                <div class="skills-fusion-layout">
+                    <div class="skills-list-panel glass-panel">
+                        <h3>POSIADANE UMIEJĘTNOŚCI</h3>
+                        <div id="owned-skills-container" class="skills-scroller"></div>
+                    </div>
+
+                    <div class="fusion-matrix-panel glass-panel">
+                        <h2 class="neon-title violet-neon"><i class="fa-solid fa-wand-magic-sparkles"></i> Fuzja Umiejętności</h2>
+                        <p class="subtitle">Połącz dwie rozwinięte na poziom 10 umiejętności, by odkryć potężniejsze techniki.</p>
+
+                        <div class="fusion-slots">
+                            <div id="fusion-slot-a" class="fusion-slot glass-panel cursor-pointer" onclick="window.uiEngine.removeFusionSlot('A')">
+                                <span class="placeholder">Dodaj skill A (Lvl 10)</span>
+                            </div>
+                            <div class="fusion-sign"><i class="fa-solid fa-plus"></i></div>
+                            <div id="fusion-slot-b" class="fusion-slot glass-panel cursor-pointer" onclick="window.uiEngine.removeFusionSlot('B')">
+                                <span class="placeholder">Dodaj skill B (Lvl 10)</span>
+                            </div>
+                        </div>
+
+                        <button id="trigger-fusion-btn" class="neon-btn violet-btn" onclick="window.uiEngine.triggerSkillFusion()">URUCHOM FUSE SYSTEM</button>
+
+                        <div class="recipes-list glass-panel">
+                            <h4>Znane Receptury Fuzji</h4>
+                            <ul>
+                                <li data-tooltip="Wymaga: Kula Ognia (Lvl 10) + Pchnięcie Wiatru (Lvl 10)&#10;Tworzy niszczycielską burzę ognia, zadającą ogromne obrażenia magiczne wszystkim wrogom w lochu."><strong>Ogniste Tornado</strong>: Kula Ognia + Pchnięcie Wiatru</li>
+                                <li data-tooltip="Wymaga: Ciężkie Uderzenie (Lvl 10) + Tarcza Mana (Lvl 10)&#10;Zadaje potężne obrażenia fizyczne oparte na Twojej obronie i generuje duże agro, chroniąc sojuszników."><strong>Uderzenie Odwetu</strong>: Ciężkie Uderzenie + Tarcza Mana</li>
+                                <li data-tooltip="Wymaga: Szybkie Cięcie (Lvl 10) + Zatruta Strzałka (Lvl 10)&#10;Błyskawiczny atak z cienia, który nakłada silną toksynę wysysającą HP przeciwnika z każdą sekundą."><strong>Cień Toksyny</strong>: Szybkie Cięcie + Zatruta Strzałka</li>
+                                <li data-tooltip="Wymaga: Leczenie (Lvl 10) + Święta Tarcza (Lvl 10)&#10;Przywraca ogromną ilość zdrowia całej drużynie oraz nakłada tarczę absorbującą kolejne ataki."><strong>Aura Odkupienia</strong>: Leczenie + Święta Tarcza</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WIDOK 4: BRAMY I WALKA -->
+            <section id="view-combat" class="tab-view hidden">
+                <div class="combat-grid-layout">
+                    <div class="gates-selection glass-panel">
+                        <h3>DOSTĘPNE BRAMY</h3>
+                        <div id="gates-list-container" class="gates-list"></div>
+                    </div>
+
+                    <div class="active-battle-panel glass-panel">
+                        <h3 class="neon-title violet-neon"><i class="fa-solid fa-swords"></i> Aktywny Rajd Drużynowy</h3>
+                        
+                        <div id="empty-battle-message">
+                            <p>Brak aktywnego rajdu. Wybierz bramę po lewej i kliknij [ROZPOCZNIJ RAJD], by wysłać drużynę.</p>
+                        </div>
+
+                        <div id="active-battle-view" class="hidden">
+                            <div class="battle-header-info">
+                                <span id="battle-gate-name" class="glowing-text">Brama</span>
+                                <span id="battle-wave-text" class="badge">Fala 1/3</span>
+                            </div>
+
+                            <div class="combatants-row">
+                                <div class="party-combat-column">
+                                    <h4>Nasza Drużyna</h4>
+                                    <div id="battle-party-mobs" class="battle-list"></div>
+                                </div>
+                                <div class="versus-sign">VS</div>
+                                <div class="monsters-combat-column">
+                                    <h4>Wrogowie</h4>
+                                    <div id="battle-monsters-mobs" class="battle-list"></div>
+                                </div>
+                            </div>
+
+                            <div class="combat-console-logs glass-panel">
+                                <h4>Konsola Bojowa Systemu</h4>
+                                <div id="combat-logs-container" class="combat-logs-scroller"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- FLOATING SYSTEM POPUP -->
+        <div id="system-alert-popup" class="modal-overlay hidden" onclick="window.uiEngine.closeSystemAlert()">
+            <div class="system-alert-box glass-panel violet-neon-border">
+                <div class="header">
+                    <i class="fa-solid fa-circle-exclamation icon"></i>
+                    <h3 class="glowing-text">NOTYFIKACJA SYSTEMU</h3>
+                </div>
+                <div class="content">
+                    <p id="system-alert-text">Zostałeś pomyślnie przebudzony.</p>
+                </div>
+                <p class="tap-close">Kliknij, aby zamknąć</p>
+            </div>
+        </div>
+
+        <!-- TABS BUTTONS -->
+        <footer id="bottom-tabs">
+            <button class="tab-btn active" onclick="window.uiEngine.switchTab('city')" data-tooltip="Mapa Eksploracji Miasta&#10;Podróżuj po lokalizacjach miejskich, trenuj cechy, studiuj, kupuj podarki i spotykaj towarzyszy."><i class="fa-solid fa-map-location-dot"></i> Eksploracja</button>
+            <button class="tab-btn" onclick="window.uiEngine.switchTab('party')" data-tooltip="Skład Drużyny & Plecak&#10;Zarządzaj statystykami, awansuj klasy bohaterów, dobieraj najemników i zakładaj ekwipunek z lochów."><i class="fa-solid fa-users"></i> Drużyna</button>
+            <button class="tab-btn" onclick="window.uiEngine.switchTab('skills')" data-tooltip="Księga Zaklęć & Fuzje&#10;Ucz się czarów z zakupionych zwojów i łącz w pary w pełni rozwinięte skille (Lvl 10) w potężne techniki."><i class="fa-solid fa-wand-magic-sparkles"></i> Umiejętności</button>
+            <button class="tab-btn" onclick="window.uiEngine.switchTab('combat')" data-tooltip="Biuro Rajdów Bram&#10;Organizuj wyprawy do odblokowanych lochów i walcz automatycznie o złoto, rdzenie oraz losowy rzadki loot."><i class="fa-solid fa-shield-halved"></i> Bramy / Lochy</button>
+        </footer>
+
+    </div>
+
+    <!-- Script imports -->
+    <script src="js/state.js"></script>
+    <script src="js/classes.js"></script>
+    <script src="js/skills.js"></script>
+    <script src="js/city.js"></script>
+    <script src="js/quests.js"></script>
+    <script src="js/dungeons.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
