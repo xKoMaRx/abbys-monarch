@@ -270,8 +270,20 @@ class UIEngine {
             fatigueBar.setAttribute('data-tooltip', `Zmęczenie (Fatigue): ${Math.round(fatigueVal)}/100\nRośnie o +12 na każdy sektor w Bramach.\nRegeneruje się automatycznie poza walką (0.25 pkt/s) oraz do 0 przy śnie w Domu.${fatiguePenaltyText}`);
         }
 
+        const walletPill = document.getElementById('hud-wallet-pill');
+        if (walletPill) {
+            const tiersText = Object.entries(state.inventory.crystalTiers)
+                .map(([rank, count]) => `${rank}: ${count}`)
+                .join('\n');
+            walletPill.setAttribute('data-tooltip', `Skarbiec i Waluty łowcy\nZłoto (G): ${state.inventory.gold}\nStan kryształów:\n${tiersText}\n\n1 kryształ = 10 G`);
+        }
+        
         document.getElementById('hud-gold').innerText = state.inventory.gold;
-        document.getElementById('hud-crystals').innerText = state.inventory.manaCrystals;
+        
+        // Sum crystals from tiers
+        const totalCrystals = Object.values(state.inventory.crystalTiers).reduce((sum, count) => sum + count, 0);
+        document.getElementById('hud-crystals').innerText = totalCrystals;
+        
         document.getElementById('hud-day').innerText = world.dayCount;
         
         const hrs = String(world.currentTime).padStart(2, '0');
@@ -1234,6 +1246,14 @@ class UIEngine {
         gearList.forEach(gear => { itemsToRender.push({ type: 'gear', id: gear.id, gear: gear, isSel: this.selectedGearId === gear.id }); });
         if (hpPots > 0) itemsToRender.push({ type: 'potion_hp', id: 'potion_hp', count: hpPots, isSel: this.selectedGearId === 'potion_hp' });
         if (mpPots > 0) itemsToRender.push({ type: 'potion_mp', id: 'potion_mp', count: mpPots, isSel: this.selectedGearId === 'potion_mp' });
+        
+        if (state.inventory.crystalTiers) {
+            Object.entries(state.inventory.crystalTiers).forEach(([rank, count]) => {
+                if (count > 0) {
+                    itemsToRender.push({ type: 'crystal', id: `crystal_${rank}`, rank: rank, count: count, isSel: this.selectedGearId === `crystal_${rank}` });
+                }
+            });
+        }
 
         for (let i = 0; i < 20; i++) {
             const item = itemsToRender[i];
@@ -1275,6 +1295,15 @@ class UIEngine {
                             <i class="fa-solid fa-flask" style="color: #42a5f5;"></i>
                             <span class="stack-badge" style="color: #42a5f5; border-color: rgba(66,165,245,0.25);">x${item.count}</span>
                         </div>`;
+                } else if (item.type === 'crystal') {
+                    const isSel = item.isSel ? 'selected' : '';
+                    gearBag.innerHTML += `
+                        <div class="backpack-slot ${isSel} tooltip-down${tooltipAlign}" 
+                             data-tooltip="Kryształ Mana (${item.rank}) x${item.count}\nMożna spieniężyć w Stowarzyszeniu."
+                             onclick="window.uiEngine.selectGearItem('crystal_${item.rank}')">
+                            <i class="fa-solid fa-gem" style="color: #e040fb;"></i>
+                            <span class="stack-badge" style="color: #e040fb; border-color: rgba(224,64,251,0.25);">x${item.count}</span>
+                        </div>`;
                 }
             } else {
                 gearBag.innerHTML += `<div class="backpack-slot empty"></div>`;
@@ -1297,6 +1326,19 @@ class UIEngine {
                 nameDisplay.className = `glowing-text`;
                 nameDisplay.style.color = '#42a5f5';
                 document.getElementById('gear-stats-display').innerHTML = `Typ: UŻYTKOWY FLAKON<br>Przywraca 40% MP.<br><div style="margin-top: 10px;"><button class="neon-btn cyan-btn" onclick="window.uiEngine.usePotion('mp')">UŻYJ MIKSTURY</button></div>`;
+            } else if (this.selectedGearId.startsWith('crystal_')) {
+                detailsPanel.classList.remove('hidden');
+                const rank = this.selectedGearId.split('_')[1];
+                const count = state.inventory.crystalTiers[rank];
+
+                const nameDisplay = document.getElementById('gear-name-display');
+                nameDisplay.innerText = `Kryształ Mana (${rank}) x${count}`;
+                nameDisplay.className = `glowing-text`;
+                nameDisplay.style.color = '#e040fb';
+
+                const sellValue = count * 10;
+
+                document.getElementById('gear-stats-display').innerHTML = `Typ: WALUTA<br>Wartość: ${sellValue} Złota w Stowarzyszeniu.<br><div style="margin-top: 10px;"><button class="neon-btn violet-btn" onclick="window.uiEngine.sellAllCrystals('${rank}')">SPRZEDAJ WSZYSTKIE (${rank})</button></div>`;
             } else {
                 const gear = state.inventory.gear.find(g => g.id === this.selectedGearId);
                 if (gear) {
@@ -1439,6 +1481,21 @@ class UIEngine {
         this.renderPartyTab();
         this.updateHUD();
         alert(`Sprzedano przedmiot za +${value} Złota!`);
+    }
+
+    sellAllCrystals(rank) {
+        const state = window.gameState.state;
+        const count = state.inventory.crystalTiers[rank];
+        if (count > 0) {
+            state.inventory.crystalTiers[rank] = 0;
+            state.inventory.manaCrystals -= count; // Keep total in sync
+            state.inventory.gold += count * 10;
+            this.selectedGearId = null;
+            window.gameState.save();
+            this.renderInventory();
+            this.updateHUD();
+            alert(`Sprzedano wszystkie kryształy (${rank}) za +${count * 10} Złota!`);
+        }
     }
 
     equipCompanionToParty(companionId) {
