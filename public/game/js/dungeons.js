@@ -77,12 +77,13 @@ class DungeonsSystem {
         this.gateType = 'standard'; // 'standard', 'red_gate', 'double_dungeon'
         this.sectors = [];
         this.battleLog = [];
+        this.isGuestMercenaryRaid = false;
     }
 
     /**
      * Prepares party stats, applying active class multipliers and synergy relationships
      */
-    prepareBattleParty() {
+    prepareBattleParty(gateId = null) {
         const state = window.gameState.state;
         const party = [];
 
@@ -106,65 +107,125 @@ class DungeonsSystem {
             actionGauge: Math.floor(Math.random() * 30)
         });
 
-        // 2. Gather permanent companion stats
-        state.party.forEach(id => {
-            if (id === 'player') return;
+        if (!this.isGuestMercenaryRaid) {
+            // 2. Gather permanent companion stats
+            state.party.forEach(id => {
+                if (id === 'player') return;
 
-            const companion = state.companions[id];
-            if (companion && companion.recruited) {
-                const derived = window.classSystem.calculateDerivedStats(companion);
-                
-                let synergyDmgBuff = 1.0;
-                let synergyHealBuff = 1.0;
-                if (companion.affection >= 60) {
-                    if (id === 'min_ah') {
-                        synergyDmgBuff = 1.15; 
-                    } else if (id === 'yu_na') {
-                        synergyHealBuff = 1.20; 
+                const companion = state.companions[id];
+                if (companion && companion.recruited) {
+                    const derived = window.classSystem.calculateDerivedStats(companion);
+                    
+                    let synergyDmgBuff = 1.0;
+                    let synergyHealBuff = 1.0;
+                    if (companion.affection >= 60) {
+                        if (id === 'min_ah') {
+                            synergyDmgBuff = 1.15; 
+                        } else if (id === 'yu_na') {
+                            synergyHealBuff = 1.20; 
+                        }
                     }
-                }
 
+                    party.push({
+                        id: companion.id,
+                        name: companion.name,
+                        classId: companion.currentClass,
+                        level: companion.level,
+                        maxHp: derived.maxHp,
+                        hp: companion.hp !== undefined ? companion.hp : derived.maxHp,
+                        maxMp: derived.maxMp,
+                        mp: companion.mp !== undefined ? companion.mp : derived.maxMp,
+                        derived: derived,
+                        skills: companion.skills,
+                        equippedSkills: companion.equippedSkills,
+                        aggro: companion.baseClass === 'Warrior' ? 30 : 10, 
+                        synergyDmgBuff: synergyDmgBuff,
+                        synergyHealBuff: synergyHealBuff,
+                        cooldowns: {},
+                        actionGauge: Math.floor(Math.random() * 30)
+                    });
+                }
+            });
+
+            // 3. Gather hired mercenaries
+            state.mercenaries.forEach(mercenary => {
                 party.push({
-                    id: companion.id,
-                    name: companion.name,
-                    classId: companion.currentClass,
-                    level: companion.level,
-                    maxHp: derived.maxHp,
-                    hp: companion.hp !== undefined ? companion.hp : derived.maxHp,
-                    maxMp: derived.maxMp,
-                    mp: companion.mp !== undefined ? companion.mp : derived.maxMp,
-                    derived: derived,
-                    skills: companion.skills,
-                    equippedSkills: companion.equippedSkills,
-                    aggro: companion.baseClass === 'Warrior' ? 30 : 10, 
-                    synergyDmgBuff: synergyDmgBuff,
-                    synergyHealBuff: synergyHealBuff,
+                    id: mercenary.id,
+                    name: `${mercenary.name} (Najemnik)`,
+                    classId: mercenary.classId,
+                    level: mercenary.level,
+                    maxHp: mercenary.maxHp,
+                    hp: mercenary.maxHp,
+                    maxMp: mercenary.maxMp,
+                    mp: mercenary.maxMp,
+                    derived: mercenary.derived,
+                    skills: mercenary.skills,
+                    equippedSkills: mercenary.equippedSkills,
+                    aggro: mercenary.classId === 'Warrior' ? 30 : 10,
                     cooldowns: {},
+                    isMercenary: true,
+                    actionGauge: Math.floor(Math.random() * 30)
+                });
+            });
+        } else {
+            // Procedurally generate a full Rank-appropriate party for Guest Mercenary Raid
+            const selectedGateId = gateId || state.world.currentGate;
+            let gate = this.gates[selectedGateId];
+            if (!gate && state.world.dynamicGates) {
+                gate = state.world.dynamicGates.find(g => g.id === selectedGateId);
+            }
+            const rank = gate ? gate.rank : 'E';
+            const recLvl = gate ? gate.recommendedLvl : 1;
+            
+            // For Rank E/D: 2 members (total 3), Rank C-S: 3 members (total 4)
+            const numTeammates = (rank === 'E' || rank === 'D') ? 2 : 3;
+            const namesList = ["Kamil", "Sebastian", "Patryk", "Agata", "Dominika", "Mateusz", "Robert", "Jan", "Grzegorz", "Joanna"];
+            const classesPool = [
+                { classId: 'Warrior', name: 'Wojownik', skills: ['strike', 'provoke'] },
+                { classId: 'Mage', name: 'Czarodziej', skills: ['fireball', 'mana_shield'] },
+                { classId: 'Assassin', name: 'Zabójca', skills: ['quick_cut', 'poison_dart'] },
+                { classId: 'Ranger', name: 'Strzelec', skills: ['aimed_shot'] },
+                { classId: 'Cleric', name: 'Kleryk', skills: ['heal', 'holy_shield'] }
+            ];
+            
+            for (let i = 0; i < numTeammates; i++) {
+                const name = namesList[Math.floor(Math.random() * namesList.length)];
+                const classObj = classesPool[Math.floor(Math.random() * classesPool.length)];
+                const level = Math.max(1, recLvl + Math.floor(Math.random() * 3) - 1);
+                
+                const baseStat = 12 + level * 3;
+                let stats = { str: baseStat, dex: baseStat, vit: baseStat, int: baseStat, wis: baseStat, luk: baseStat };
+                if (classObj.classId === 'Warrior') { stats.str += level * 3; stats.vit += level * 2; }
+                else if (classObj.classId === 'Mage') { stats.int += level * 3; stats.wis += level * 2; }
+                else if (classObj.classId === 'Assassin') { stats.dex += level * 3; stats.luk += level * 2; }
+                else if (classObj.classId === 'Ranger') { stats.dex += level * 3; stats.str += level; }
+                else if (classObj.classId === 'Cleric') { stats.wis += level * 3; stats.vit += level; }
+                
+                const dummyChar = { currentClass: classObj.classId, stats: stats, equippedGear: {} };
+                const derived = window.classSystem.calculateDerivedStats(dummyChar);
+                
+                const isLeader = i === 0;
+                const roleSuffix = isLeader ? "Lider" : classObj.name;
+                
+                party.push({
+                    id: `temporary_guest_${i}`,
+                    name: `${name} (${roleSuffix} - Ranga ${rank})`,
+                    classId: classObj.classId,
+                    level: level,
+                    maxHp: derived.maxHp,
+                    hp: derived.maxHp,
+                    maxMp: derived.maxMp,
+                    mp: derived.maxMp,
+                    derived: derived,
+                    skills: classObj.skills,
+                    equippedSkills: classObj.skills,
+                    aggro: classObj.classId === 'Warrior' ? 30 : 10,
+                    cooldowns: {},
+                    isMercenary: true, // Treated as mercenary so HP/MP is not saved back
                     actionGauge: Math.floor(Math.random() * 30)
                 });
             }
-        });
-
-        // 3. Gather hired mercenaries
-        state.mercenaries.forEach(mercenary => {
-            party.push({
-                id: mercenary.id,
-                name: `${mercenary.name} (Najemnik)`,
-                classId: mercenary.classId,
-                level: mercenary.level,
-                maxHp: mercenary.maxHp,
-                hp: mercenary.maxHp,
-                maxMp: mercenary.maxMp,
-                mp: mercenary.maxMp,
-                derived: mercenary.derived,
-                skills: mercenary.skills,
-                equippedSkills: mercenary.equippedSkills,
-                aggro: mercenary.classId === 'Warrior' ? 30 : 10,
-                cooldowns: {},
-                isMercenary: true,
-                actionGauge: Math.floor(Math.random() * 30)
-            });
-        });
+        }
 
         return party;
     }
@@ -186,10 +247,10 @@ class DungeonsSystem {
         if (!gate) return false;
 
         // Verify Reservation & Licencji status
-        const isReserved = state.world.reservedGates[gateId];
+        const isReserved = state.world.reservedGates && state.world.reservedGates[gateId];
         // Dungeon breaks are free and don't require license
         const isDungeonBreak = gate.dynamicType === 'dungeon_break';
-        if (!isReserved && !isDungeonBreak) {
+        if (!isReserved && !isDungeonBreak && !this.isGuestMercenaryRaid) {
             alert('Ta Brama nie została opłacona lub zarezerwowana! Wykup licencję w panelu przygotowania przed wejściem.');
             return false;
         }
@@ -207,7 +268,7 @@ class DungeonsSystem {
         this.battleActive = true;
         this.isPaused = false;
         this.escapePromptTriggered = false;
-        this.activeParty = this.prepareBattleParty();
+        this.activeParty = this.prepareBattleParty(gateId);
         this.currentWave = 1;
 
         // Initialize combat stats tracking
@@ -715,7 +776,7 @@ class DungeonsSystem {
                     // Suppress or purge from dynamicGates array
                     window.gameState.state.world.dynamicGates = window.gameState.state.world.dynamicGates.filter(g => g.id !== gateId);
                     
-                    if (gate.dynamicType === 'dungeon_break') {
+                    if (gate.dynamicType === 'dungeon_break' && !this.isGuestMercenaryRaid) {
                         // Calculate gold bonus based on gate rank
                         const rankCosts = { 'E': 120, 'D': 450, 'C': 1600, 'B': 4200, 'A': 12500, 'S': 38000 };
                         associationGoldBonus = Math.floor((rankCosts[gate.rank] || 300) * 1.8);
@@ -725,21 +786,34 @@ class DungeonsSystem {
                 }
                 
                 // Crystals Calculation (Prestige & Talent multipliers apply to crystal yield!)
-                let crystalsEarned = Math.floor(gate.rewards.crystalsMin + Math.random() * (gate.rewards.crystalsMax - gate.rewards.crystalsMin));
+                let crystalsEarned = 0;
+                let crystalsBypassDistributionText = "";
+                
+                if (this.isGuestMercenaryRaid) {
+                    // Procedural leader shares loot: 50% chance to award 1-2 crystals
+                    if (Math.random() < 0.50) {
+                        crystalsEarned = (gate.rank === 'E' || gate.rank === 'D') ? 1 : 2;
+                        crystalsBypassDistributionText = ` (Lider przyznał Ci ${crystalsEarned} kryształów prowizji)`;
+                    } else {
+                        crystalsBypassDistributionText = ` (Lider zatrzymał wszystkie kryształy dla grupy uderzeniowej)`;
+                    }
+                } else {
+                    crystalsEarned = Math.floor(gate.rewards.crystalsMin + Math.random() * (gate.rewards.crystalsMax - gate.rewards.crystalsMin));
 
-                // Gate Type modifications for crystal drops
-                if (this.gateType === 'red_gate') {
-                    crystalsEarned = Math.floor(crystalsEarned * 1.50); // +50% crystals
-                } else if (this.gateType === 'double_dungeon') {
-                    crystalsEarned = Math.floor(crystalsEarned * 1.25); // +25% crystals
+                    // Gate Type modifications for crystal drops
+                    if (this.gateType === 'red_gate') {
+                        crystalsEarned = Math.floor(crystalsEarned * 1.50); // +50% crystals
+                    } else if (this.gateType === 'double_dungeon') {
+                        crystalsEarned = Math.floor(crystalsEarned * 1.25); // +25% crystals
+                    }
+
+                    const goldUpgradeLvl = window.gameState.state.prestige.upgrades.gold || 0;
+                    const crystalMult = 1.0 + (goldUpgradeLvl * 0.20) + (window.gameState.state.player.talent === 'talent_gold' ? 0.20 : 0.0);
+                    crystalsEarned = Math.floor(crystalsEarned * crystalMult);
                 }
 
-                const goldUpgradeLvl = window.gameState.state.prestige.upgrades.gold || 0;
-                const crystalMult = 1.0 + (goldUpgradeLvl * 0.20) + (window.gameState.state.player.talent === 'talent_gold' ? 0.20 : 0.0);
-                crystalsEarned = Math.floor(crystalsEarned * crystalMult);
-
                 // Split crystals if mercenaries are present
-                const numMercenaries = this.activeParty.filter(a => a.isMercenary).length;
+                const numMercenaries = this.isGuestMercenaryRaid ? 0 : this.activeParty.filter(a => a.isMercenary).length;
                 let mercCutText = "";
                 if (numMercenaries > 0) {
                     const cutPercent = numMercenaries * 0.15; 
@@ -752,22 +826,50 @@ class DungeonsSystem {
                 let gearBonus = 0;
                 if (this.gateType === 'red_gate') gearBonus = 5;
                 if (this.gateType === 'double_dungeon') gearBonus = 15;
-                const gearDropped = this.generateRNGGear(gate.rank, gearBonus);
-                window.gameState.state.inventory.gear.push(gearDropped);
-                if (this.combatStats) {
-                    this.combatStats.itemsObtained.push(gearDropped);
+                
+                let gearDropped = null;
+                let gearText = "";
+                if (!this.isGuestMercenaryRaid) {
+                    gearDropped = this.generateRNGGear(gate.rank, gearBonus);
+                    window.gameState.state.inventory.gear.push(gearDropped);
+                    if (this.combatStats) {
+                        this.combatStats.itemsObtained.push(gearDropped);
+                    }
+                    gearText = `[SYSTEM - BOSS DROP] ZNALAZŁEŚ PRZEDMIOT: [${gearDropped.rarity}] ${gearDropped.name}!`;
+                } else {
+                    // Guest Mercenary Mode: 20% chance of a distributed gear drop
+                    if (Math.random() < 0.20) {
+                        gearDropped = this.generateRNGGear(gate.rank, 0);
+                        window.gameState.state.inventory.gear.push(gearDropped);
+                        if (this.combatStats) {
+                            this.combatStats.itemsObtained.push(gearDropped);
+                        }
+                        gearText = `[DYSTRYBUCJA] Lider dostrzegł Twój wkład i przekazał Ci: [${gearDropped.rarity}] ${gearDropped.name}!`;
+                    } else {
+                        gearText = `[DYSTRYBUCJA] Łupy rzadkie z bossa przypadły rdzennym członkom grupy. Lider dziękuje Ci za pomoc.`;
+                    }
                 }
 
-                // Additional Gold bonus if Double Dungeon was cleared
+                // Contract Payment Salary for Hired Mercenary
+                let mercenarySalary = 0;
                 let extraGoldText = "";
                 let goldGift = 0;
-                if (this.gateType === 'double_dungeon') {
-                    goldGift = Math.floor(300 + Math.random() * 1000);
-                    window.gameState.addGold(goldGift);
-                    extraGoldText = ` oraz +${goldGift} Sztuk Złota jako podarek Świątyni`;
-                }
-                if (associationGoldBonus > 0) {
-                    extraGoldText += associationText;
+                
+                if (this.isGuestMercenaryRaid) {
+                    const rankBounties = { 'E': 250, 'D': 800, 'C': 2500, 'B': 6000, 'A': 18000, 'S': 50000 };
+                    mercenarySalary = rankBounties[gate.rank] || 250;
+                    window.gameState.addGold(mercenarySalary);
+                    extraGoldText = ` oraz żołd kontraktowy najemnika: +${mercenarySalary} Złota`;
+                } else {
+                    // Additional Gold bonus if Double Dungeon was cleared
+                    if (this.gateType === 'double_dungeon') {
+                        goldGift = Math.floor(300 + Math.random() * 1000);
+                        window.gameState.addGold(goldGift);
+                        extraGoldText = ` oraz +${goldGift} Sztuk Złota jako podarek Świątyni`;
+                    }
+                    if (associationGoldBonus > 0) {
+                        extraGoldText += associationText;
+                    }
                 }
 
                 // Save survivor HP and MP back to state
@@ -785,10 +887,12 @@ class DungeonsSystem {
                 });
 
                 // Apply resources (No gold from monsters except temple gifts/bounties!)
-                window.gameState.addManaCrystals(crystalsEarned, gate.rank);
+                if (crystalsEarned > 0) {
+                    window.gameState.addManaCrystals(crystalsEarned, gate.rank);
+                }
                 if (this.combatStats) {
                     this.combatStats.manaCrystalsEarned[gate.rank] = (this.combatStats.manaCrystalsEarned[gate.rank] || 0) + crystalsEarned;
-                    this.combatStats.goldEarned += (associationGoldBonus + goldGift);
+                    this.combatStats.goldEarned += (associationGoldBonus + goldGift + mercenarySalary);
                 }
 
                 // Clear hired mercenaries from active state
@@ -796,8 +900,13 @@ class DungeonsSystem {
                 window.gameState.save();
 
                 log.push(`[SYSTEM] BRAMA OCZYSZCZONA Z SUKCESEM!`);
-                log.push(`Otrzymane nagrody: +${crystalsEarned} Kryształów Mana${mercCutText}${extraGoldText}!`);
-                log.push(`[SYSTEM - BOSS DROP] ZNALAZŁEŚ PRZEDMIOT: [${gearDropped.rarity}] ${gearDropped.name}!`);
+                if (this.isGuestMercenaryRaid) {
+                    log.push(`Podsumowanie kontraktu: Otrzymano stałe wynagrodzenie${extraGoldText}.${crystalsBypassDistributionText}`);
+                    log.push(gearText);
+                } else {
+                    log.push(`Otrzymane nagrody: +${crystalsEarned} Kryształów Mana${mercCutText}${extraGoldText}!`);
+                    log.push(gearText);
+                }
 
                 // Update active quest progress
                 const questReport = window.questSystem.checkActiveQuestProgress();
@@ -949,6 +1058,11 @@ class DungeonsSystem {
 
         expAwarded = Math.max(1, expAwarded);
 
+        if (this.isGuestMercenaryRaid) {
+            expAwarded = Math.floor(expAwarded * 0.40); // 40% experience as guest mercenary
+            expAwarded = Math.max(1, expAwarded);
+        }
+
         // Track total EXP gained during combat
         if (this.combatStats) {
             this.combatStats.expGained += expAwarded;
@@ -960,20 +1074,22 @@ class DungeonsSystem {
 
         this.battleLog.push(`[SYSTEM - ZABITO WROGA] ${monster.name} został pokonany. Zdobywasz +${expAwarded} EXP.${lvlUpText}`);
 
-        // Apply exp to companions
-        window.gameState.state.party.forEach(id => {
-            if (id === 'player') return;
-            const companion = window.gameState.state.companions[id];
-            if (companion && companion.recruited) {
-                companion.exp += expAwarded;
-                while (companion.exp >= companion.expNeeded) {
-                    companion.exp -= companion.expNeeded;
-                    companion.level++;
-                    companion.expNeeded = Math.floor(companion.expNeeded * 1.5);
-                    this.battleLog.push(`[SYSTEM - TOWARZYSZ AWANSOWAŁ] ${companion.name} awansuje na poziom ${companion.level}!`);
+        // Apply exp to companions (only if we are not in guest mercenary raid)
+        if (!this.isGuestMercenaryRaid) {
+            window.gameState.state.party.forEach(id => {
+                if (id === 'player') return;
+                const companion = window.gameState.state.companions[id];
+                if (companion && companion.recruited) {
+                    companion.exp += expAwarded;
+                    while (companion.exp >= companion.expNeeded) {
+                        companion.exp -= companion.expNeeded;
+                        companion.level++;
+                        companion.expNeeded = Math.floor(companion.expNeeded * 1.5);
+                        this.battleLog.push(`[SYSTEM - TOWARZYSZ AWANSOWAŁ] ${companion.name} awansuje na poziom ${companion.level}!`);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Regular monsters drops: 100% chance for crystal(s) matched to monster rank, 8% chance for gear loot
         if (!monster.isBoss) {
@@ -993,12 +1109,6 @@ class DungeonsSystem {
             let crystals = Math.floor(minCryst + Math.random() * (maxCryst - minCryst + 1));
             if (this.gateType === 'red_gate') crystals = Math.round(crystals * 1.5);
 
-            // Add crystal resources with the gate's rank
-            window.gameState.addManaCrystals(crystals, gate.rank);
-            if (this.combatStats) {
-                this.combatStats.manaCrystalsEarned[gate.rank] = (this.combatStats.manaCrystalsEarned[gate.rank] || 0) + crystals;
-            }
-
             const crystalTierNames = {
                 'E': 'Zwykły Kryształ Many (E)',
                 'D': 'Wzmocniony Kryształ Many (D)',
@@ -1008,23 +1118,51 @@ class DungeonsSystem {
                 'S': 'Boski Kryształ Many (S)'
             };
             const cName = crystalTierNames[gate.rank] || 'Kryształ Many';
-            this.battleLog.push(`[ŁUP - KRYSZTAŁY] ${monster.name} pozostawia +${crystals}x [${cName}]!`);
 
-            if (Math.random() < (0.08 * dropChanceMult)) {
-                const hpPots = window.gameState.state.inventory.hpPotions !== undefined ? window.gameState.state.inventory.hpPotions : 0;
-                const mpPots = window.gameState.state.inventory.mpPotions !== undefined ? window.gameState.state.inventory.mpPotions : 0;
-                const slotsUsed = window.gameState.state.inventory.gear.length + (hpPots > 0 ? 1 : 0) + (mpPots > 0 ? 1 : 0);
-                
-                if (slotsUsed < 20) {
-                    let gearBonus = 0;
-                    if (this.gateType === 'red_gate') gearBonus = 5;
-                    if (this.gateType === 'double_dungeon') gearBonus = 15;
-                    const gear = this.generateRNGGear(gate.rank, gearBonus);
-                    window.gameState.state.inventory.gear.push(gear);
-                    if (this.combatStats) {
-                        this.combatStats.itemsObtained.push(gear);
+            // Add crystal resources with the gate's rank (only if we are not in a guest mercenary raid)
+            if (!this.isGuestMercenaryRaid) {
+                window.gameState.addManaCrystals(crystals, gate.rank);
+                if (this.combatStats) {
+                    this.combatStats.manaCrystalsEarned[gate.rank] = (this.combatStats.manaCrystalsEarned[gate.rank] || 0) + crystals;
+                }
+                this.battleLog.push(`[ŁUP - KRYSZTAŁY] ${monster.name} pozostawia +${crystals}x [${cName}]!`);
+            } else {
+                this.battleLog.push(`[DYSTRYBUCJA] Pokonany ${monster.name} upuszcza +${crystals}x [${cName}], które trafiają do worka Lidera.`);
+            }
+
+            if (!this.isGuestMercenaryRaid) {
+                if (Math.random() < (0.08 * dropChanceMult)) {
+                    const hpPots = window.gameState.state.inventory.hpPotions !== undefined ? window.gameState.state.inventory.hpPotions : 0;
+                    const mpPots = window.gameState.state.inventory.mpPotions !== undefined ? window.gameState.state.inventory.mpPotions : 0;
+                    const slotsUsed = window.gameState.state.inventory.gear.length + (hpPots > 0 ? 1 : 0) + (mpPots > 0 ? 1 : 0);
+                    
+                    if (slotsUsed < 20) {
+                        let gearBonus = 0;
+                        if (this.gateType === 'red_gate') gearBonus = 5;
+                        if (this.gateType === 'double_dungeon') gearBonus = 15;
+                        const gear = this.generateRNGGear(gate.rank, gearBonus);
+                        window.gameState.state.inventory.gear.push(gear);
+                        if (this.combatStats) {
+                            this.combatStats.itemsObtained.push(gear);
+                        }
+                        this.battleLog.push(`[ŁUP - PRZEDMIOT] Pokonany wróg upuszcza rzadki przedmiot: [${gear.rarity}] ${gear.name}!`);
                     }
-                    this.battleLog.push(`[ŁUP - PRZEDMIOT] Pokonany wróg upuszcza rzadki przedmiot: [${gear.rarity}] ${gear.name}!`);
+                }
+            } else {
+                // Reduced guest loot chance (2%) for finding something on player's own
+                if (Math.random() < 0.02) {
+                    const hpPots = window.gameState.state.inventory.hpPotions !== undefined ? window.gameState.state.inventory.hpPotions : 0;
+                    const mpPots = window.gameState.state.inventory.mpPotions !== undefined ? window.gameState.state.inventory.mpPotions : 0;
+                    const slotsUsed = window.gameState.state.inventory.gear.length + (hpPots > 0 ? 1 : 0) + (mpPots > 0 ? 1 : 0);
+                    
+                    if (slotsUsed < 20) {
+                        const gear = this.generateRNGGear(gate.rank, 0);
+                        window.gameState.state.inventory.gear.push(gear);
+                        if (this.combatStats) {
+                            this.combatStats.itemsObtained.push(gear);
+                        }
+                        this.battleLog.push(`[ŁUP NAJEMNIKA] Przeszukując kąty pokoju, odnalazłeś rzadki porzucony przedmiot: [${gear.rarity}] ${gear.name}!`);
+                    }
                 }
             }
         }

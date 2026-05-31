@@ -1140,6 +1140,7 @@ class UIEngine {
             const renderEqSlot = (slotEl, gearType, defaultIcon, defaultLabel) => {
                 if (!slotEl) return;
                 const gear = char.equippedGear ? char.equippedGear[gearType] : null;
+                const isRing = gearType.startsWith('ring');
                 // Clean rarity classes and dynamically append tooltip directions
                 let extraClass = '';
                 if (['shoulder_l', 'cape', 'glove_l', 'weapon_l'].includes(gearType)) {
@@ -1894,16 +1895,19 @@ class UIEngine {
         const licenseStatusEl = document.getElementById('prep-license-status');
         const buyBtn = document.getElementById('prep-buy-license-btn');
         const enterBtn = document.getElementById('prep-enter-btn');
+        const joinBtn = document.getElementById('prep-join-group-btn');
 
         if (isReserved || isFree) {
             licenseStatusEl.innerText = isFree ? "SPONSOROWANE (0 ZŁOTA)" : "OPŁACONA / ZAREZERWOWANA";
             licenseStatusEl.style.color = "#4caf50";
             buyBtn.style.display = 'none';
+            if (joinBtn) joinBtn.style.display = 'none';
             enterBtn.disabled = false;
         } else {
             licenseStatusEl.innerText = "NIEOPŁACONA - WYMAGANY ZAKUP";
             licenseStatusEl.style.color = "#ff3333";
             buyBtn.style.display = 'block';
+            if (joinBtn) joinBtn.style.display = 'block';
             enterBtn.disabled = true;
         }
 
@@ -1959,9 +1963,12 @@ class UIEngine {
     /**
      * ENTERS THE DUNGEON (POINT OF NO RETURN)
      */
-    executeEnterGate() {
+    executeEnterGate(asGuestMercenary = false) {
         const gateId = this.selectedPrepGateId;
         if (!gateId) return;
+
+        // Set the flag in dungeonsSystem before starting!
+        window.dungeonsSystem.isGuestMercenaryRaid = !!asGuestMercenary;
 
         const check = window.dungeonsSystem.startGate(gateId);
         if (check) {
@@ -1970,9 +1977,18 @@ class UIEngine {
             window.gameState.save();
 
             this.closeRaidPrep();
+            this.switchTab('combat');
             this.renderGatesTab();
-            this.showSystemAlert(`[PRZEKROCZENIE HORYZONTU WRÓT]\nPrzekraczasz błonę portalu. Czujesz mrożący krew w klatce pradawny powiew. Brak możliwości odwrotu do chwili oczyszczenia bossa lub ratunkowej ewakuacji...`);
+            
+            if (asGuestMercenary) {
+                this.showSystemAlert(`[KONTRAKT NAJEMNIKA PODPISANY]\nDołączasz do grupy uderzeniowej jako wolny strzelec. Stowarzyszenie ubezpiecza wyprawę, lecz lider dzieli łupy według wkładu. Otrzymasz gwarantowany stały żołd za oczyszczenie bossa! Brak możliwości odwrotu...`);
+            } else {
+                this.showSystemAlert(`[PRZEKROCZENIE HORYZONTU WRÓT]\nPrzekraczasz błonę portalu. Czujesz mrożący krew w klatce pradawny powiew. Brak możliwości odwrotu do chwili oczyszczenia bossa lub ratunkowej ewakuacji...`);
+            }
             this.updateHUD();
+        } else {
+            // Clean up if start failed
+            window.dungeonsSystem.isGuestMercenaryRaid = false;
         }
     }
 
@@ -1998,6 +2014,7 @@ class UIEngine {
         window.dungeonsSystem.battleActive = false;
         window.dungeonsSystem.isPaused = false;
         window.dungeonsSystem.escapePromptTriggered = false;
+        window.dungeonsSystem.isGuestMercenaryRaid = false;
 
         this.switchTab('city');
         this.renderGatesTab();
@@ -2041,6 +2058,7 @@ class UIEngine {
         window.dungeonsSystem.battleActive = false;
         window.dungeonsSystem.isPaused = false;
         window.dungeonsSystem.escapePromptTriggered = false;
+        window.dungeonsSystem.isGuestMercenaryRaid = false;
 
         this.switchTab('city');
         this.renderGatesTab();
@@ -2092,8 +2110,15 @@ class UIEngine {
             durationEl.textContent = `${min}:${sec}`;
             difficultyEl.textContent = gate.rank;
             difficultyEl.className = `rank rank-${gate.rank}`;
-            expEl.textContent = `+${combatStats.expGained} EXP`;
-            goldEl.textContent = `+${combatStats.goldEarned} Złota`;
+            
+            const isMercenaryRaid = window.dungeonsSystem && window.dungeonsSystem.isGuestMercenaryRaid;
+            expEl.textContent = `+${combatStats.expGained} EXP` + (isMercenaryRaid ? " (Udział 40%)" : "");
+            goldEl.textContent = `+${combatStats.goldEarned} Złota` + (isMercenaryRaid ? " (Żołd kontraktowy najemnika)" : "");
+
+            const contractBadge = document.getElementById('summary-mercenary-contract-badge');
+            if (contractBadge) {
+                contractBadge.style.display = (isMercenaryRaid && isVictory) ? 'block' : 'none';
+            }
         }
 
         // Render crystals by rank
@@ -2238,6 +2263,7 @@ class UIEngine {
 
     closeRaidSummary() {
         document.getElementById('raid-summary-modal').classList.add('hidden');
+        window.dungeonsSystem.isGuestMercenaryRaid = false;
         this.switchTab('combat');
         this.renderGatesTab();
         this.updateHUD();

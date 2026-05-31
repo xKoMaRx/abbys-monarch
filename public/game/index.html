@@ -708,6 +708,9 @@
                     <button id="prep-buy-license-btn" class="neon-btn gold-btn" onclick="window.uiEngine.executeBuyLicense()" style="width: 100%; padding: 10px; font-weight: bold;">
                         <i class="fa-solid fa-coins"></i> OPŁAĆ LICENCJĘ I ZAREZERWUJ BRAMĘ
                     </button>
+                    <button id="prep-join-group-btn" class="neon-btn violet-btn" onclick="window.uiEngine.executeEnterGate(true)" style="width: 100%; padding: 10px; font-weight: bold; display: none;">
+                        <i class="fa-solid fa-handshake"></i> DOŁĄCZ DO INNNEJ DRUŻYNY (ŻOŁD NAJEMNIKA)
+                    </button>
                     <button id="prep-enter-btn" class="neon-btn cyan-btn" onclick="window.uiEngine.executeEnterGate()" style="width: 100%; padding: 10px; font-weight: bold;" disabled>
                         <i class="fa-solid fa-shoe-prints"></i> WEJDŹ DO BRAMY (PUNKT BEZ POWROTU)
                     </button>
@@ -773,6 +776,7 @@
                     </div>
                     <h2 id="summary-title" class="glowing-text" style="font-size: 24px; letter-spacing: 2px; margin: 0; text-transform: uppercase;">ZWYCIĘSTWO</h2>
                     <p id="summary-subtitle" style="font-size: 13px; color: var(--text-muted); margin: 5px 0 0 0;">Brama została pomyślnie oczyszczona</p>
+                    <div id="summary-mercenary-contract-badge" style="display: none; background: rgba(138,43,226,0.15); border: 1px dashed var(--violet-neon); border-radius: 4px; padding: 10px; margin-top: 15px; text-align: left; font-size: 11px; line-height: 1.4; color: #fff;"><i class="fa-solid fa-handshake" style="color: var(--violet-neon); margin-right: 6px;"></i> <strong>KONTRAKT NAJEMNIKA:</strong> Jako członek wynajęty przez inną grupę, otrzymałeś stały żołd gwarantowany przez Stowarzyszenie. Lider grupy dokonał dystrybucji pozostałych kryształów oraz przedmiotów z bossa podsumowanej instancji.</div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
